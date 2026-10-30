@@ -1,0 +1,46 @@
+//@version=6
+// q-trade: TradingView -> webhook alert for qtrade/webhook.py (POST https://<your-host>/tv).
+// Same demo rule as qtrade/strategies.py and mql5/Experts/QScalp.mq5: EMA(9/21) cross on CLOSED bars, stop = 1.5 x ATR(14),
+// target = 1.5 x stop. A DEMO load for the plumbing, NOT an edge (see docs/GUIDE.md section 0).
+//
+// The alert sends DISTANCES, not prices: the receiver re-anchors them on the broker's live quote, because this chart's feed is
+// not your broker's feed. The id (symbol-barOpenTime-side) is the same string qtrade/strategies.py builds, so the journal
+// rejects a duplicate delivery, and the three implementations can be compared trade by trade.
+//
+// Set-up: add to a chart -> Create alert -> Condition: this indicator, "Any alert() function call" -> Webhook URL.
+// Keep this script PRIVATE: the secret input below is part of every alert message.
+indicator("q-trade scalp alert (EMA cross + ATR)", overlay = true)
+
+fastLen = input.int(9, "Fast EMA", minval = 1)
+slowLen = input.int(21, "Slow EMA", minval = 2)
+atrLen  = input.int(14, "ATR length", minval = 2)
+atrMult = input.float(1.5, "Stop = ATR x", minval = 0.1, step = 0.1)
+rr      = input.float(1.5, "Target = stop x", minval = 0.1, step = 0.1)
+secret  = input.string("", "Webhook secret (>= 16 chars)")
+symName = input.string("", "Symbol sent (blank = chart ticker, e.g. EURUSD)")
+
+fast   = ta.ema(close, fastLen)
+slow   = ta.ema(close, slowLen)
+atr    = ta.atr(atrLen)
+slDist = atrMult * atr
+tpDist = rr * slDist
+buySig  = ta.crossover(fast, slow)
+sellSig = ta.crossunder(fast, slow)
+sym = symName == "" ? syminfo.ticker : symName
+
+payload(string side) =>
+    '{"secret":"' + secret + '","id":"' + sym + '-' + str.tostring(time) + '-' + side + '","symbol":"' + sym +
+     '","side":"' + side + '","sl_dist":' + str.tostring(slDist, format.mintick) + ',"tp_dist":' +
+     str.tostring(tpDist, format.mintick) + ',"fire_ms":' + str.tostring(timenow) +
+     ',"strategy":"ema_cross_atr","price":' + str.tostring(close, format.mintick) + '}'
+
+// Only on a confirmed (closed) bar: an intrabar cross can vanish before the close (repainting).
+if barstate.isconfirmed and buySig
+    alert(payload("buy"), alert.freq_once_per_bar_close)
+if barstate.isconfirmed and sellSig
+    alert(payload("sell"), alert.freq_once_per_bar_close)
+
+plot(fast, "Fast EMA", color.teal)
+plot(slow, "Slow EMA", color.orange)
+plotshape(buySig, "Buy", shape.triangleup, location.belowbar, color.teal, size = size.tiny)
+plotshape(sellSig, "Sell", shape.triangledown, location.abovebar, color.red, size = size.tiny)
