@@ -51,7 +51,7 @@ input int  InpNewsBeforeMin     = 5;
 input int  InpNewsAfterMin      = 10;
 
 input group "Demo signal: EMA cross + ATR on closed bars"
-input ENUM_TIMEFRAMES InpTF   = PERIOD_M1;
+input ENUM_TIMEFRAMES InpTF   = PERIOD_M5;    // GUIDE §0: 5-15 minutes keeps cost / stop near 0.2-0.3
 input int    InpFast    = 9;
 input int    InpSlow    = 21;
 input int    InpAtrLen  = 14;

@@ -239,7 +239,7 @@ python -m qtrade.cli backtest --ticks synthetic:10 --symbol EURUSD --compare --a
 ### 4.2 MT5 方案 A：MQL5 EA（`mql5/Experts/QScalp.mq5`）
 
 1. 複製到 `MQL5\Experts\`，在 MetaEditor 編譯（**本 repo 的環境沒有 MetaEditor，EA 未經編譯器驗證；第一次編譯如有錯誤請照錯誤訊息修正**）。
-2. 拖到 EURUSD M1 圖表，填 `InpCommissionPerLotRT`（你的券商每手來回手續費），開啟「演算法交易」。
+2. 拖到 EURUSD 圖表（EA 用 `InpTF`，預設 M5，與圖表時框無關），填 `InpCommissionPerLotRT`（你的券商每手來回手續費），開啟「演算法交易」。
 3. 結構：`OnTick` → 點差取樣 → `UpdateDay`（換日／日停機／回撤停機）→ 時間停損 → 新 K 線時 `Signal` → `TryEnter`（全部檢查 → `CTrade` 帶 SL/TP 下單）；`OnTradeTransaction` 記錄平倉 R。
 4. Journal：`MQL5\Files\QScalp_<品種>.csv`（`PLACED/REJECT/FAILED/CLOSE`，含點差、風險、R、執行微秒數）。
 5. 換成你自己的訊號：只改 `Signal()`，其餘不動。

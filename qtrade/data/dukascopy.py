@@ -4,10 +4,17 @@
 
 Writes one gzip CSV per UTC day, ``<SYM>_<YYYY-MM-DD>.csv.gz`` with the header ``time_ms,bid,ask``, ascending.
 
-Format (same feed fx-board's scripts/fetch-dukascopy.py reads for candles, verified 2026-10-30):
+``--minutes`` downloads the daily 1-minute BID and ASK candles instead (2 requests a day instead of 24) and writes SYNTHETIC
+ticks, four per minute, like MT5's "1 minute OHLC" tester mode: open, then low/high (low first on an up bar, high first on a
+down bar), then close, on the bid path; ask = bid + the larger of the minute's open and close spread. Good enough for 5-15
+minute rules with stops of several pips; NOT a tick test (the order inside a minute is assumed, spikes inside it are lost).
+
+Formats (same feed fx-board's scripts/fetch-dukascopy.py reads for candles, verified 2026-10-30):
 ``https://datafeed.dukascopy.com/datafeed/<SYM>/<YYYY>/<MM 0-based>/<DD>/<HH>h_ticks.bi5`` = LZMA-"alone" compressed array of
 20-byte big-endian records: uint32 milliseconds since the hour, uint32 ask, uint32 bid (price x scale), float32 ask volume,
 float32 bid volume. An hour without ticks (weekend) is an empty body.
+``.../<DD>/<BID|ASK>_candles_min_1.bi5`` = 24-byte records: int32 seconds since the day, int32 open, close, low, high, float32
+volume; closed minutes are flat zero-volume fillers.
 
 Dukascopy quotes are an ECN feed: its spreads are TIGHTER than most retail accounts. Use them for the price path, and charge your
 own broker's spread on top (``qtrade backtest --min-spread``), or better, test on the broker's own ticks exported from MT5.
@@ -33,6 +40,7 @@ BASE = "https://datafeed.dukascopy.com/datafeed"
 UA = "q-trade-research (private use)"
 SCALE = {"USDJPY": 1e3, "EURJPY": 1e3, "GBPJPY": 1e3, "XAUUSD": 1e3, "XAGUSD": 1e3}  # everything else: 1e5
 RECORD = struct.Struct(">IIIff")
+MINUTE = struct.Struct(">iiiiif")
 
 
 class Blocked(RuntimeError):
@@ -52,6 +60,36 @@ def decode_hour(blob: bytes, hour_start_ms: int, scale: float) -> list[tuple[int
     for off in range(0, len(raw) - len(raw) % RECORD.size, RECORD.size):
         ms, ask, bid, _av, _bv = RECORD.unpack_from(raw, off)
         out.append((hour_start_ms + ms, round(bid / scale, 6), round(ask / scale, 6)))
+    return out
+
+
+def decode_minutes(blob: bytes, day_start_s: int, scale: float) -> dict[int, tuple[float, float, float, float]]:
+    """Daily 1-minute candle file -> {minute start (s): (open, high, low, close)}; fillers dropped."""
+    if not blob:
+        return {}
+    raw = lzma.LZMADecompressor(format=lzma.FORMAT_ALONE).decompress(blob)
+    out = {}
+    for off in range(0, len(raw) - len(raw) % MINUTE.size, MINUTE.size):
+        t, o, c, lo, h, v = MINUTE.unpack_from(raw, off)
+        if v == 0 and o == c == lo == h:
+            continue
+        out[day_start_s + t] = (o / scale, h / scale, lo / scale, c / scale)
+    return out
+
+
+TICK_OFFSETS_MS = (0, 20_000, 40_000, 59_000)
+
+
+def minutes_to_ticks(bid: dict, ask: dict, point: float) -> list[tuple[int, float, float]]:
+    """Four synthetic ticks per minute present on both sides (see the module doc)."""
+    out = []
+    for t in sorted(bid.keys() & ask.keys()):
+        bo, bh, bl, bc = bid[t]
+        ao, _ah, _al, ac = ask[t]
+        spread = max(ao - bo, ac - bc, point)
+        path = (bo, bl, bh, bc) if bc >= bo else (bo, bh, bl, bc)
+        for dt_ms, px in zip(TICK_OFFSETS_MS, path):
+            out.append((t * 1000 + dt_ms, round(px, 6), round(px + spread, 6)))
     return out
 
 
@@ -84,6 +122,17 @@ def day_ticks(symbol: str, day: dt.date, pause: float) -> list[tuple[int, float,
     return ticks
 
 
+def day_minute_ticks(symbol: str, day: dt.date, pause: float) -> list[tuple[int, float, float]]:
+    scale = scale_of(symbol)
+    day_s = int(dt.datetime(day.year, day.month, day.day, tzinfo=dt.timezone.utc).timestamp())
+    sides = {}
+    for side in ("BID", "ASK"):
+        url = f"{BASE}/{symbol.upper()}/{day.year}/{day.month - 1:02d}/{day.day:02d}/{side}_candles_min_1.bi5"
+        sides[side] = decode_minutes(fetch(url), day_s, scale)
+        time.sleep(pause)
+    return minutes_to_ticks(sides["BID"], sides["ASK"], 1 / scale)
+
+
 def write_day(path: str, ticks: list[tuple[int, float, float]]) -> None:
     tmp = path + ".part"
     with gzip.open(tmp, "wt", newline="") as f:
@@ -100,25 +149,36 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--to", dest="end", required=True, type=dt.date.fromisoformat)
     p.add_argument("--out", required=True)
     p.add_argument("--pause", type=float, default=1.5, help="seconds between requests (serial)")
+    p.add_argument("--minutes", action="store_true", help="1-minute bid/ask candles -> synthetic ticks (2 requests a day)")
+    p.add_argument("--weekdays-only", action="store_true", help="skip Sundays too (only ~3 h of Sunday-evening trading)")
     a = p.parse_args(argv)
     out = os.path.expanduser(a.out)
     os.makedirs(out, exist_ok=True)
+    failed = []
     day = a.start
     while day <= a.end:
         path = os.path.join(out, f"{a.symbol.upper()}_{day.isoformat()}.csv.gz")
-        if day.weekday() == 5 or os.path.exists(path):  # Saturday never trades; existing days are kept
+        skip = day.weekday() == 5 or (a.weekdays_only and day.weekday() == 6)  # Saturday never trades
+        if skip or os.path.exists(path):  # existing days are kept, so a re-run only fills the gaps
             day += dt.timedelta(days=1)
             continue
         try:
-            ticks = day_ticks(a.symbol, day, a.pause)
+            ticks = (day_minute_ticks if a.minutes else day_ticks)(a.symbol, day, a.pause)
         except Blocked as e:
             print(e, file=sys.stderr)
             return 2
+        except RuntimeError as e:  # the feed gave up on one file: report it, keep going, re-run later for the gaps
+            print(f"FAIL {day}: {e}", file=sys.stderr, flush=True)
+            failed.append(day)
+            ticks = None
         if ticks:
             write_day(path, ticks)
-        print(f"{a.symbol} {day} {len(ticks)} ticks", flush=True)
+        if ticks is not None:
+            print(f"{a.symbol} {day} {len(ticks)} ticks", flush=True)
         day += dt.timedelta(days=1)
-    return 0
+    if failed:
+        print(f"{len(failed)} day(s) failed: {', '.join(map(str, failed))}; run again to fill them", file=sys.stderr)
+    return 2 if failed else 0
 
 
 if __name__ == "__main__":

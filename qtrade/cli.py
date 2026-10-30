@@ -63,11 +63,17 @@ def cmd_backtest(a) -> int:
     risk, router = conf.risk_config(c), conf.router_config(c)
     if a.any_session:
         risk.sessions_utc = ()
+    if a.no_account_stops:  # research: judge the rule on every trade it takes, not on the first $20 it loses
+        risk.daily_max_loss_usd, risk.max_drawdown_usd = float("inf"), 0.0
+    if a.max_hold_bars:
+        router.max_hold_s = a.max_hold_bars * a.bar_min * 60
 
     def once(zero_cost: bool) -> bt.BacktestResult:
-        strat = EmaCrossAtr(a.symbol, a.fast, a.slow, atr_mult=a.atr_mult, rr=a.rr)
+        strat = EmaCrossAtr(a.symbol, a.fast, a.slow, atr_mult=a.atr_mult, rr=a.rr, bar_ms=int(a.bar_min * 60_000))
         cfg = bt.BacktestConfig(latency_ms=a.latency_ms, slippage_points=a.slippage_points, balance=a.balance, zero_cost=zero_cost)
-        return bt.run(ticks, a.symbol, spec, strat, risk, router, cfg)
+        r = bt.run(ticks, a.symbol, spec, strat, risk, router, cfg)
+        r.judged = judge([(tr["received_ms"], tr["r"]) for tr in r.trades], m=a.m)
+        return r
 
     net = once(False)
     print(f"{a.symbol}: {len(ticks)} ticks; signals {sum(net.counts.values())} {net.counts}")
@@ -141,7 +147,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--slow", type=int, default=21)
     s.add_argument("--atr-mult", type=float, default=1.5)
     s.add_argument("--rr", type=float, default=1.5)
+    s.add_argument("--bar-min", type=float, default=1, help="bar length of the demo rule, minutes")
+    s.add_argument("--max-hold-bars", type=float, default=0, help="time stop in bars (overrides router.max_hold_s)")
     s.add_argument("--any-session", action="store_true", help="ignore the session filter")
+    s.add_argument("--no-account-stops", action="store_true", help="research: no daily stop, no drawdown kill")
+    s.add_argument("--m", type=int, default=1, help="hypotheses tested in this study (Sidak correction of the verdict)")
     s.add_argument("--compare", action="store_true", help="also run the zero-cost reference")
     s.add_argument("--out", help="write trades and statistics as JSON")
     s.set_defaults(fn=cmd_backtest)
