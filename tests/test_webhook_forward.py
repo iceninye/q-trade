@@ -120,3 +120,19 @@ def test_decode_hour():
     blob = lzma.compress(raw, format=lzma.FORMAT_ALONE)
     assert decode_hour(blob, 1_000_000, 1e5) == [(1_001_500, 1.1001, 1.10012), (4_599_999, 1.10015, 1.1002)]
     assert decode_hour(b"", 0, 1e5) == []
+
+
+def test_decode_minutes_and_synthetic_ticks():
+    from qtrade.data.dukascopy import decode_minutes, minutes_to_ticks
+
+    rec = struct.Struct(">iiiiif")
+    bid = rec.pack(60, 110000, 110010, 109990, 110020, 5.0) + rec.pack(120, 110010, 110010, 110010, 110010, 0.0)  # 2nd = filler
+    ask = rec.pack(60, 110002, 110013, 109992, 110022, 5.0)
+    b = decode_minutes(lzma.compress(bid, format=lzma.FORMAT_ALONE), 1_000, 1e5)
+    a = decode_minutes(lzma.compress(ask, format=lzma.FORMAT_ALONE), 1_000, 1e5)
+    assert b == {1_060: (1.1, 1.1002, 1.0999, 1.1001)}  # open, high, low, close; the flat zero-volume filler is dropped
+    ticks = minutes_to_ticks(b, a, 1e-5)
+    # an up bar walks open -> low -> high -> close; ask = bid + max(open spread, close spread) = 0.3 pip
+    assert [t for t, _, _ in ticks] == [1_060_000, 1_080_000, 1_100_000, 1_119_000]
+    assert [x for _, x, _ in ticks] == [1.1, 1.0999, 1.1002, 1.1001]
+    assert all(abs(ask - bid - 0.00003) < 1e-9 for _, bid, ask in ticks)
