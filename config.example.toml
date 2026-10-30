@@ -1,0 +1,77 @@
+# q-trade configuration. Copy to config.toml (git-ignored). Secrets come from ENVIRONMENT VARIABLES named here, never from this file.
+# Fix every number BEFORE back-testing; changing limits after seeing results is fitting them to the past.
+
+[files]
+state = "state.json"          # risk-guard state (day-start equity, streak, halts): must survive restarts
+journal = "journal.sqlite"    # every signal, decision, fill and close
+calendar = ""                 # optional: fx-board calendar CSV (datetime_utc,event,currency,impact), times in UTC
+
+[risk]                        # USD; a cent account (USC) is converted automatically
+risk_usd = 1.0
+daily_max_loss_usd = 4.0      # worst case = closed + floating + open risk + the new trade
+max_drawdown_usd = 20.0       # from peak equity -> KILLED until a human clears "killed" in the state file
+max_trades_per_day = 20
+min_interval_s = 60
+window_s = 3600
+max_entries_per_window = 6
+max_consecutive_losses = 3
+cooldown_min = 60
+max_open_positions = 1
+max_spread_to_stop = 0.2
+spread_spike_mult = 2.0
+max_quote_age_ms = 3000
+max_signal_age_ms = 5000      # TradingView path: alerts arrive seconds late. Needs a synced clock (NTP / w32tm /resync)
+sessions_utc = ["07:00-16:30"]
+rollover_ny = ["16:55", "18:05"]
+news_before_min = 5
+news_after_min = 10
+kill_file = "KILL"            # create this file to stop all entries immediately
+
+[risk.max_spread_points]      # absolute caps in broker points (5-digit EURUSD: 10 points = 1 pip)
+EURUSD = 12
+XAUUSD = 35
+
+[router]
+max_slippage_points = 10      # MT5 deviation: refuse the fill if the price moved more than this since the decision
+slippage_allowance_points = 2 # stop slippage included in the $ risk when sizing
+max_hold_s = 1800             # time stop
+size_overshoot = 0.0          # 0 = never exceed risk_usd to reach the minimum lot
+symbols = ["EURUSD", "XAUUSD"]
+
+[broker]
+kind = "paper"                # paper | mt5
+login = 0                     # mt5 only
+server = ""
+path = ""                     # terminal64.exe, when several terminals are installed
+password_env = "MT5_PASSWORD"
+magic = 20261030
+# server_utc_offset_h = 2     # set it when the auto-estimate cannot work (market closed at start-up)
+
+[broker.symbol_map]           # TradingView / config name -> broker name
+# EURUSD = "EURUSDc"          # cent account suffix, e.g.
+
+[broker.commission_per_lot_rt] # account currency per 1.0 lot, round trip: from YOUR broker's fee page
+EURUSD = 7.0
+XAUUSD = 7.0
+
+[paper]                       # dry run without MT5: quotes come from the alert's price
+balance = 100.0
+currency = "USD"
+
+[paper.spread_points]         # spread applied around the alert's price in the dry run
+EURUSD = 10
+XAUUSD = 25
+
+# [paper.specs.GBPUSD]        # extra symbols for back-tests / the dry run (EURUSD and XAUUSD are built in)
+# point = 0.00001
+# tick_size = 0.00001
+# tick_value = 1.0
+# volume_min = 0.01
+# volume_step = 0.01
+# volume_max = 100.0
+# stops_level_points = 0
+
+[webhook]
+host = "127.0.0.1"            # behind Caddy / nginx terminating TLS on 443 (TradingView only calls ports 80 and 443)
+port = 8000
+secret_env = "QTRADE_SECRET"  # >= 16 characters; the same string goes into the Pine script's input

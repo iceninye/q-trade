@@ -1,0 +1,28 @@
+[project]
+name = "qtrade"
+version = "0.1.0"
+description = "Micro-account scalping toolkit: risk guard, order router, tick back-test, TradingView webhook, MT5 adapter"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "tzdata; sys_platform == 'win32'",  # zoneinfo has no time-zone database on Windows without it
+]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110,<1", "uvicorn>=0.29,<1", "pydantic>=2.6,<3"]
+mt5 = ["MetaTrader5>=5.0.45; sys_platform == 'win32'"]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1", "fastapi>=0.110,<1", "pydantic>=2.6,<3"]
+
+[project.scripts]
+qtrade = "qtrade.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["qtrade*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
