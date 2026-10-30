@@ -29,7 +29,7 @@
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev,server]"          # Windows 實盤再加 [mt5]
-python -m pytest -q                      # 50 項測試
+python -m pytest -q                      # 51 項測試
 
 python -m qtrade.cli costs --cost 0.00009 --stops 0.0002,0.0003,0.0005,0.001 --unit 0.0001
 python -m qtrade.cli backtest --ticks synthetic:10 --symbol EURUSD --compare --any-session

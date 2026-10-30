@@ -220,7 +220,7 @@ zero-cost  trades  308  win 41.2%  avg +0.010R  se 0.056  cost 0.000R  unclear  
 ```bash
 python -m venv .venv && . .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -e ".[dev,server]"                      # Windows 實盤再加 [mt5]
-python -m pytest -q                                 # 50 項測試
+python -m pytest -q                                 # 51 項測試
 
 python -m qtrade.cli costs --cost 0.00009 --stops 0.0002,0.0003,0.0005,0.001 --unit 0.0001
 python -m qtrade.cli backtest --ticks synthetic:10 --symbol EURUSD --compare --any-session
