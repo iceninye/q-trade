@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers static assets: ONLY docs/ is published (index.html renders GUIDE.md and the stage-2 results).
+  // Code, tests, configs and tick data are never uploaded. Deploy command: npx wrangler deploy (no build command).
+  "name": "q-trade",
+  "compatibility_date": "2026-10-30",
+  "assets": { "directory": "./docs" }
+}
