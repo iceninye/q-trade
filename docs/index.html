@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>q-trade 指南</title>
+<meta name="description" content="微型本金自動化 Scalping：系統架構、風控、驗證流程與 EURUSD 關卡 2 結果">
+<style>
+  :root { --bg:#fbfbfa; --fg:#1d1d1f; --muted:#6b6b70; --line:#e3e3e0; --card:#fff; --accent:#0b6bcb; --code:#f2f2ef; --warn:#a15c00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#121214; --fg:#e8e8ea; --muted:#9a9aa2; --line:#2c2c31; --card:#1a1a1d; --accent:#5aa7ff; --code:#222226; --warn:#f0b35a; } }
+  :root[data-theme="dark"] { --bg:#121214; --fg:#e8e8ea; --muted:#9a9aa2; --line:#2c2c31; --card:#1a1a1d; --accent:#5aa7ff; --code:#222226; --warn:#f0b35a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.7 -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--line); }
+  .bar { max-width:980px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bar strong { margin-right:auto; }
+  .tab { border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:999px; padding:4px 14px; cursor:pointer; font:inherit; font-size:14px; }
+  .tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  main { max-width:980px; margin:0 auto; padding:16px 16px 64px; }
+  .note { border-left:3px solid var(--warn); padding:6px 12px; color:var(--muted); font-size:14px; margin:8px 0 16px; }
+  h1 { font-size:1.7rem; line-height:1.3; } h2 { margin-top:2.2em; padding-top:.4em; border-top:1px solid var(--line); } h3 { margin-top:1.6em; }
+  a { color:var(--accent); }
+  table { border-collapse:collapse; display:block; overflow-x:auto; max-width:100%; font-size:14px; margin:12px 0; }
+  th, td { border:1px solid var(--line); padding:6px 10px; vertical-align:top; text-align:left; }
+  th { background:var(--code); }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:.9em; overflow-wrap:anywhere; }
+  pre code { overflow-wrap:normal; }
+  pre { background:var(--code); padding:12px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.5; }
+  pre code { padding:0; background:none; }
+  blockquote { margin:12px 0; padding:4px 14px; border-left:3px solid var(--line); color:var(--muted); }
+  .mermaid { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; overflow-x:auto; }
+  #status { color:var(--muted); }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <strong>q-trade</strong>
+  <button class="tab" data-doc="GUIDE.md">指南</button>
+  <button class="tab" data-doc="PREREG-stage2-eurusd.md">關卡 2 結果</button>
+</div></header>
+<main>
+  <p class="note">研究與工程用途，不是投資建議。示範策略不是優勢：EURUSD 5／15 分鐘真實報價回測扣成本後都是負數（見「關卡 2 結果」）。</p>
+  <p id="status">載入中…</p>
+  <article id="doc"></article>
+</main>
+<!-- vendored, MIT (docs/vendor/LICENSE-*): no CDN at run time -->
+<script src="vendor/marked-12.0.2.min.js"></script>
+<script src="vendor/mermaid-10.9.1.min.js"></script>
+<script>
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+  const tabs = [...document.querySelectorAll(".tab")];
+  const doc = document.getElementById("doc"), status = document.getElementById("status");
+
+  async function show(name) {
+    tabs.forEach(t => t.setAttribute("aria-selected", String(t.dataset.doc === name)));
+    status.textContent = "載入中…"; doc.innerHTML = "";
+    try {
+      const res = await fetch(name, { cache: "no-cache" });
+      if (!res.ok) throw new Error(res.status);
+      doc.innerHTML = marked.parse(await res.text());
+      status.textContent = "";
+      // ```mermaid blocks -> diagrams
+      const blocks = doc.querySelectorAll("pre code.language-mermaid");
+      blocks.forEach(code => { const div = document.createElement("div"); div.className = "mermaid"; div.textContent = code.textContent; code.parentElement.replaceWith(div); });
+      if (blocks.length) await mermaid.run({ nodes: doc.querySelectorAll(".mermaid") });
+      // links to the other doc stay inside the page
+      doc.querySelectorAll('a[href$=".md"]').forEach(a => {
+        const target = a.getAttribute("href").split("/").pop();
+        if (tabs.some(t => t.dataset.doc === target)) a.addEventListener("click", e => { e.preventDefault(); go(target); });
+      });
+    } catch (e) { status.textContent = "載入失敗（" + e.message + "）"; }
+  }
+  function go(name) { history.replaceState(null, "", "#" + name.replace(".md", "")); show(name); scrollTo(0, 0); }
+  tabs.forEach(t => t.addEventListener("click", () => go(t.dataset.doc)));
+  const start = tabs.find(t => location.hash && t.dataset.doc.startsWith(location.hash.slice(1)));
+  show(start ? start.dataset.doc : "GUIDE.md");
+</script>
+</body>
+</html>

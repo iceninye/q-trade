@@ -29,7 +29,7 @@
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev,server]"          # Windows 實盤再加 [mt5]
-python -m pytest -q                      # 51 項測試
+python -m pytest -q                      # 54 項測試
 
 python -m qtrade.cli costs --cost 0.00009 --stops 0.0002,0.0003,0.0005,0.001 --unit 0.0001
 python -m qtrade.cli backtest --ticks synthetic:10 --symbol EURUSD --compare --any-session
@@ -37,6 +37,20 @@ cp config.example.toml config.toml && export QTRADE_SECRET='至少16個字元'
 python -m qtrade.cli serve --config config.toml       # paper 模式，任何作業系統都可試跑
 python -m qtrade.cli forward --journal journal.sqlite
 ```
+
+## 網頁（Cloudflare Workers）
+
+`wrangler.jsonc` 只發佈 `docs/` 這個資料夾：`docs/index.html` 會渲染指南與關卡 2 結果，`marked`、`mermaid` 兩個程式庫已放在 `docs/vendor/`（MIT），不依賴外部 CDN。程式碼、測試、設定和 tick 資料都不會上傳；`tests/test_site.py` 會檢查這一點。
+
+Cloudflare 設定（Workers & Pages → q-trade → Settings → Build）：
+- Build command：留空
+- Deploy command：`npx wrangler deploy`
+- Root directory：留空
+- Production branch：`main`
+
+`*.workers.dev` 網址預設是**公開**的。只想自己看的話：Worker → Settings → Domains & Routes → workers.dev → Enable Cloudflare Access，政策設為只允許你的電郵。
+
+本機預覽：`cd docs && python -m http.server 8000`
 
 ## 免責
 
