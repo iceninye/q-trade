@@ -10,7 +10,7 @@ def test_wrangler_publishes_docs_only():
     with open(os.path.join(ROOT, "wrangler.jsonc"), encoding="utf-8") as f:
         cfg = json.loads(re.sub(r"^\s*//.*$", "", f.read(), flags=re.M))
     assert cfg["assets"]["directory"] == "./docs"
-    assert sorted(os.listdir(os.path.join(ROOT, "docs"))) == ["GUIDE.md", "PREREG-stage2-eurusd.md", "index.html", "vendor"]
+    assert sorted(os.listdir(os.path.join(ROOT, "docs"))) == ["GUIDE.md", "OPPORTUNITIES.md", "PREREG-stage2-eurusd.md", "index.html", "vendor"]
     assert all(n.startswith(("marked-", "mermaid-", "LICENSE-")) for n in os.listdir(os.path.join(ROOT, "docs", "vendor")))
 
 

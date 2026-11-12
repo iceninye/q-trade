@@ -3,46 +3,194 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>q-trade 指南</title>
-<meta name="description" content="微型本金自動化 Scalping：系統架構、風控、驗證流程與 EURUSD 關卡 2 結果">
+<title>q-trade</title>
+<meta name="description" content="微型本金自動化 Scalping：現況、獲利機會清單、指南與 EURUSD 關卡 2 結果">
 <style>
-  :root { --bg:#fbfbfa; --fg:#1d1d1f; --muted:#6b6b70; --line:#e3e3e0; --card:#fff; --accent:#0b6bcb; --code:#f2f2ef; --warn:#a15c00; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#121214; --fg:#e8e8ea; --muted:#9a9aa2; --line:#2c2c31; --card:#1a1a1d; --accent:#5aa7ff; --code:#222226; --warn:#f0b35a; } }
-  :root[data-theme="dark"] { --bg:#121214; --fg:#e8e8ea; --muted:#9a9aa2; --line:#2c2c31; --card:#1a1a1d; --accent:#5aa7ff; --code:#222226; --warn:#f0b35a; }
+  :root {
+    --bg:#f7f7f5; --surface:#fff; --fg:#1b1c1f; --muted:#62646b; --line:#e2e2de; --code:#f0f0ec;
+    --accent:#1f5fbf; --bar:#3b76c9; --bad:#b3261e; --warn:#8a5a00; --good:#1e6b3a;
+    --shadow:0 1px 2px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#111214; --surface:#1a1b1e; --fg:#e9e9ec; --muted:#9c9ea6; --line:#2b2c31; --code:#222327;
+    --accent:#7fb0ff; --bar:#5b93e0; --bad:#ff8a80; --warn:#f0b35a; --good:#7bd49a; --shadow:none; } }
+  :root[data-theme="dark"] {
+    --bg:#111214; --surface:#1a1b1e; --fg:#e9e9ec; --muted:#9c9ea6; --line:#2b2c31; --code:#222327;
+    --accent:#7fb0ff; --bar:#5b93e0; --bad:#ff8a80; --warn:#f0b35a; --good:#7bd49a; --shadow:none; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.7 -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
-  header { position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--line); }
-  .bar { max-width:980px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .bar strong { margin-right:auto; }
-  .tab { border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:999px; padding:4px 14px; cursor:pointer; font:inherit; font-size:14px; }
-  .tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
-  main { max-width:980px; margin:0 auto; padding:16px 16px 64px; }
-  .note { border-left:3px solid var(--warn); padding:6px 12px; color:var(--muted); font-size:14px; margin:8px 0 16px; }
-  h1 { font-size:1.7rem; line-height:1.3; } h2 { margin-top:2.2em; padding-top:.4em; border-top:1px solid var(--line); } h3 { margin-top:1.6em; }
-  a { color:var(--accent); }
-  table { border-collapse:collapse; display:block; overflow-x:auto; max-width:100%; font-size:14px; margin:12px 0; }
-  th, td { border:1px solid var(--line); padding:6px 10px; vertical-align:top; text-align:left; }
-  th { background:var(--code); }
-  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:.9em; overflow-wrap:anywhere; }
-  pre code { overflow-wrap:normal; }
-  pre { background:var(--code); padding:12px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.5; }
-  pre code { padding:0; background:none; }
-  blockquote { margin:12px 0; padding:4px 14px; border-left:3px solid var(--line); color:var(--muted); }
-  .mermaid { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; overflow-x:auto; }
+  html { scroll-behavior:smooth; scroll-padding-top:64px; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.75 -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; -webkit-text-size-adjust:100%; }
+  a { color:var(--accent); text-underline-offset:2px; }
+
+  header { position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .bar { max-width:1120px; margin:0 auto; padding:8px 16px; display:flex; gap:6px; align-items:center; overflow-x:auto; scrollbar-width:none; }
+  .bar::-webkit-scrollbar { display:none; }
+  .brand { font-weight:700; letter-spacing:.01em; margin-right:auto; padding-right:12px; white-space:nowrap; }
+  .tab { border:0; background:none; color:var(--muted); border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14.5px; white-space:nowrap; }
+  .tab:hover { color:var(--fg); background:var(--code); }
+  .tab[aria-selected="true"] { color:var(--fg); background:var(--surface); box-shadow:inset 0 0 0 1px var(--line); font-weight:600; }
+  .tab:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:1120px; margin:0 auto; padding:24px 16px 80px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr); gap:32px; }
+  @media (min-width:1000px) { .layout.has-toc { grid-template-columns:220px minmax(0,1fr); } }
+  #toc { display:none; }
+  @media (min-width:1000px) { .has-toc #toc { display:block; position:sticky; top:72px; align-self:start; max-height:calc(100vh - 96px); overflow:auto; font-size:13.5px; line-height:1.5; } }
+  #toc a { display:block; padding:4px 10px; color:var(--muted); text-decoration:none; border-left:2px solid var(--line); }
+  #toc a.h3 { padding-left:22px; }
+  #toc a:hover { color:var(--fg); }
+  #toc a.on { color:var(--fg); border-left-color:var(--accent); font-weight:600; }
+
+  /* document typography */
+  #doc { max-width:780px; }
+  #doc h1 { font-size:1.75rem; line-height:1.3; margin:.2em 0 .6em; letter-spacing:-.01em; }
+  #doc h2 { font-size:1.3rem; line-height:1.35; margin:2.4em 0 .6em; padding-top:1.1em; border-top:1px solid var(--line); }
+  #doc h3 { font-size:1.08rem; margin:1.8em 0 .4em; }
+  #doc p, #doc li { overflow-wrap:break-word; }
+  #doc li { margin:.25em 0; }
+  #doc hr { border:0; border-top:1px solid var(--line); margin:2em 0; }
+  #doc blockquote { margin:16px 0; padding:10px 16px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--warn); border-radius:8px; color:var(--muted); font-size:.95em; }
+  #doc blockquote p { margin:.2em 0; }
+  .tw { overflow-x:auto; margin:16px 0; border:1px solid var(--line); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); }
+  table { border-collapse:collapse; width:100%; font-size:14px; line-height:1.55; font-variant-numeric:tabular-nums; }
+  th, td { padding:9px 12px; vertical-align:top; text-align:left; border-bottom:1px solid var(--line); }
+  th { background:var(--code); font-weight:600; white-space:nowrap; position:sticky; top:0; }
+  tbody tr:last-child td { border-bottom:0; }
+  tbody tr:hover td { background:color-mix(in srgb, var(--code) 55%, transparent); }
+  td:first-child { min-width:5.5em; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:.88em; overflow-wrap:anywhere; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  pre { background:var(--surface); border:1px solid var(--line); padding:14px; border-radius:10px; overflow-x:auto; font-size:13px; line-height:1.55; }
+  pre code { padding:0; background:none; overflow-wrap:normal; }
+  .mermaid { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; overflow-x:auto; }
   #status { color:var(--muted); }
+
+  /* overview */
+  .hero h1 { font-size:1.9rem; line-height:1.25; margin:0 0 8px; letter-spacing:-.01em; }
+  .hero p { margin:0; color:var(--muted); max-width:46em; }
+  .verdict { margin:20px 0 0; padding:14px 16px; border-radius:12px; background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--bad); box-shadow:var(--shadow); }
+  .verdict b { display:block; font-size:1.05rem; }
+  .verdict span { color:var(--muted); font-size:.95rem; }
+  .sec { margin-top:36px; }
+  .sec > h2 { font-size:1.15rem; margin:0 0 4px; }
+  .sec > .sub { color:var(--muted); font-size:.92rem; margin:0 0 14px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; }
+  .tile { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); }
+  .tile .k { color:var(--muted); font-size:.85rem; }
+  .tile .v { font-size:1.6rem; font-weight:700; line-height:1.3; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .tile .d { color:var(--muted); font-size:.82rem; line-height:1.45; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; box-shadow:var(--shadow); }
+  .bars { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px 12px; align-items:center; font-size:.92rem; }
+  .bars .track { position:relative; height:14px; }
+  .bars .fill { position:absolute; inset:0 auto 0 0; background:var(--bar); border-radius:0 4px 4px 0; min-width:2px; }
+  .bars .ref { position:absolute; top:-5px; bottom:-5px; width:0; border-left:2px dashed var(--muted); }
+  .bars .num { font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
+  .legend { margin:12px 0 0; color:var(--muted); font-size:.82rem; display:flex; gap:8px; align-items:center; }
+  .legend i { display:inline-block; width:0; height:14px; border-left:2px dashed var(--muted); }
+  .opps { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .opps li { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px; box-shadow:var(--shadow); }
+  .opps .n { grid-row:span 2; width:28px; height:28px; border-radius:50%; background:var(--code); display:grid; place-items:center; font-weight:700; font-size:.9rem; margin-top:2px; }
+  .opps b { font-size:1rem; }
+  .opps p { margin:0; color:var(--muted); font-size:.9rem; line-height:1.55; }
+  .chip { display:inline-block; font-size:.74rem; font-weight:600; padding:1px 8px; border-radius:999px; border:1px solid currentColor; margin-left:6px; vertical-align:2px; white-space:nowrap; }
+  .chip.g { color:var(--good); } .chip.w { color:var(--warn); } .chip.m { color:var(--muted); }
+  .steps { list-style:none; margin:0; padding:0; display:grid; gap:0; }
+  .steps li { display:grid; grid-template-columns:24px minmax(0,1fr); gap:12px; padding:0 0 14px; position:relative; }
+  .steps li::before { content:""; position:absolute; left:11px; top:22px; bottom:0; border-left:2px solid var(--line); }
+  .steps li:last-child::before { display:none; }
+  .steps .dot { width:24px; height:24px; border-radius:50%; border:2px solid var(--line); background:var(--surface); display:grid; place-items:center; font-size:12px; font-weight:700; color:var(--muted); z-index:1; }
+  .steps .done .dot { border-color:var(--good); color:var(--good); }
+  .steps .fail .dot { border-color:var(--bad); color:var(--bad); }
+  .steps b { display:block; line-height:1.4; }
+  .steps span { color:var(--muted); font-size:.9rem; }
+  .more { display:inline-block; margin-top:12px; font-size:.92rem; }
+  footer { margin-top:48px; color:var(--muted); font-size:.82rem; border-top:1px solid var(--line); padding-top:14px; }
+  [hidden] { display:none !important; }
 </style>
 </head>
 <body>
-<header><div class="bar">
-  <strong>q-trade</strong>
+<header><nav class="bar" aria-label="主選單">
+  <span class="brand">q-trade</span>
+  <button class="tab" data-view="home">總覽</button>
+  <button class="tab" data-doc="OPPORTUNITIES.md">獲利機會</button>
   <button class="tab" data-doc="GUIDE.md">指南</button>
   <button class="tab" data-doc="PREREG-stage2-eurusd.md">關卡 2 結果</button>
-</div></header>
+</nav></header>
+
 <main>
-  <p class="note">研究與工程用途，不是投資建議。示範策略不是優勢：EURUSD 5／15 分鐘真實報價回測扣成本後都是負數（見「關卡 2 結果」）。</p>
-  <p id="status">載入中…</p>
-  <article id="doc"></article>
+  <!-- ───────── overview ───────── -->
+  <section id="home" hidden>
+    <div class="hero">
+      <h1>微型本金自動化 Scalping</h1>
+      <p>USD 100 帳戶、每筆風險約 USD 1。這個 repo 提供風控、訂單路由、tick 級回測與驗證流程；以下是到目前為止的實測結果。</p>
+    </div>
+    <div class="verdict">
+      <b>現況：沒有已驗證的獲利策略，不要用真錢交易</b>
+      <span>已測的 9 個規則扣成本後全部為負。系統的用途是限制虧損、量度真實成本，並用事先寫定的規則判定新假設。</span>
+    </div>
+
+    <div class="sec">
+      <h2>關卡 2 結果</h2>
+      <p class="sub">示範規則，EURUSD 真實報價，2026-05 至 10，122 個交易日。R = 每筆風險的倍數。</p>
+      <div class="tiles">
+        <div class="tile"><div class="k">5 分鐘，扣成本後</div><div class="v">−0.30R</div><div class="d">每筆平均 · 501 筆 · 不通過</div></div>
+        <div class="tile"><div class="k">15 分鐘，扣成本後</div><div class="v">−0.16R</div><div class="d">每筆平均 · 109 筆 · 不通過</div></div>
+        <div class="tile"><div class="k">每筆成本（5 分鐘）</div><div class="v">0.17R</div><div class="d">點差 + 手續費，佔風險比例</div></div>
+        <div class="tile"><div class="k">風控停機時的虧損</div><div class="v">USD 20</div><div class="d">USD 100 帳戶，兩個時框都在此停機</div></div>
+      </div>
+      <a class="more" href="#PREREG-stage2-eurusd" data-go="PREREG-stage2-eurusd.md">完整結果與判定規則 →</a>
+    </div>
+
+    <div class="sec">
+      <h2>成本佔停損的比例（EURUSD）</h2>
+      <p class="sub">停損 = 1.5 × 中位真實波幅。比例越高，打和所需的勝率越高；沒有優勢的規則每筆平均虧掉這個比例。</p>
+      <div class="card">
+        <div class="bars" role="img" aria-label="成本佔停損：1 分鐘 0.60R，5 分鐘 0.30R，15 分鐘 0.19R，1 小時 0.08R；建議上限 0.20R">
+          <span>1 分鐘</span><div class="track" title="1 分鐘：0.60R，打和勝率 64%"><div class="fill" style="width:100%"></div><div class="ref" style="left:33.3%"></div></div><span class="num">0.60R</span>
+          <span>5 分鐘</span><div class="track" title="5 分鐘：0.30R，打和勝率 52%"><div class="fill" style="width:50%"></div><div class="ref" style="left:33.3%"></div></div><span class="num">0.30R</span>
+          <span>15 分鐘</span><div class="track" title="15 分鐘：0.19R，打和勝率 47.5%"><div class="fill" style="width:31.7%"></div><div class="ref" style="left:33.3%"></div></div><span class="num">0.19R</span>
+          <span>1 小時</span><div class="track" title="1 小時：0.08R，打和勝率 43%"><div class="fill" style="width:13.3%"></div><div class="ref" style="left:33.3%"></div></div><span class="num">0.08R</span>
+        </div>
+        <p class="legend"><i></i>建議上限 0.20R（報酬風險比 1.5、隨機進場勝率 40%）</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>獲利機會，按證據強弱排序</h2>
+      <p class="sub">前兩項是確定有效的減虧；第三項是現有數據中唯一有正回報證據的做法；第四項尚未測試。</p>
+      <ol class="opps">
+        <li><span class="n">1</span><b>壓低每筆成本<span class="chip g">證據強</span></b><p>5 分鐘每筆成本 0.171R；每省 0.1 pip 約 +0.02R。先用你券商的真實點差與手續費重算。</p></li>
+        <li><span class="n">2</span><b>拉長時框、放寬停損<span class="chip g">證據強</span></b><p>成本佔停損由 1 分鐘的 0.60R 降到 1 小時的 0.08R。新假設優先放在 15 分鐘至 1 小時。</p></li>
+        <li><span class="n">3</span><b>長期持有指數或黃金<span class="chip w">證據中 · 非 scalping</span></b><p>你的 fx-vault-data：S&amp;P 500 年化約 9.0%、黃金約 9.1%，最大回撤 −57%／−45%。</p></li>
+        <li><span class="n">4</span><b>待測假設<span class="chip m">未測試</span></b><p>例如 5 分鐘逆勢 + 限價進場。每個假設先寫事先登記，用新的數據期間回測。</p></li>
+        <li><span class="n">5</span><b>提高本金或每筆風險<span class="chip m">有優勢後才成立</span></b><p>淨 +0.05R 的優勢在 USD 1 風險下約每月 USD 3；沒有優勢時放大風險只會放大虧損。</p></li>
+      </ol>
+      <a class="more" href="#OPPORTUNITIES" data-go="OPPORTUNITIES.md">完整清單與數字來源 →</a>
+    </div>
+
+    <div class="sec">
+      <h2>驗證進度</h2>
+      <p class="sub">每一關不過就不進下一關。</p>
+      <ol class="steps">
+        <li class="done"><span class="dot">✓</span><div><b>關卡 0–1：成本計算與隨機漫步對照</b><span>零成本 ≈ 0R、淨 ≈ −成本，回測沒有前視偏差。</span></div></li>
+        <li class="fail"><span class="dot">✕</span><div><b>關卡 2：真實報價回測</b><span>示範規則 5／15 分鐘四項判定全部不符，不進入下一關。</span></div></li>
+        <li><span class="dot">3</span><div><b>關卡 3：模擬盤前向</b><span>未開始。要先有通過關卡 2 的假設。</span></div></li>
+        <li><span class="dot">4</span><div><b>關卡 4：實盤微型前向</b><span>未開始。前 200 筆判定一次。</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ───────── documents ───────── -->
+  <section id="reader" class="layout" hidden>
+    <nav id="toc" aria-label="本頁目錄"></nav>
+    <div>
+      <p id="status">載入中…</p>
+      <article id="doc"></article>
+    </div>
+  </section>
+
+  <footer>研究與工程用途，不是投資建議。槓桿產品可以令你損失全部本金。</footer>
 </main>
+
 <!-- vendored, MIT (docs/vendor/LICENSE-*): no CDN at run time -->
 <script src="vendor/marked-12.0.2.min.js"></script>
 <script src="vendor/mermaid-10.9.1.min.js"></script>
@@ -50,31 +198,68 @@
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
   const tabs = [...document.querySelectorAll(".tab")];
-  const doc = document.getElementById("doc"), status = document.getElementById("status");
+  const docs = tabs.filter(t => t.dataset.doc).map(t => t.dataset.doc);
+  const home = document.getElementById("home"), reader = document.getElementById("reader");
+  const doc = document.getElementById("doc"), status = document.getElementById("status"), toc = document.getElementById("toc");
+  let spy = null;
 
-  async function show(name) {
-    tabs.forEach(t => t.setAttribute("aria-selected", String(t.dataset.doc === name)));
-    status.textContent = "載入中…"; doc.innerHTML = "";
+  function select(key) { tabs.forEach(t => t.setAttribute("aria-selected", String((t.dataset.doc || t.dataset.view) === key))); }
+
+  function showHome() { select("home"); reader.hidden = true; home.hidden = false; document.title = "q-trade"; }
+
+  async function showDoc(name) {
+    select(name); home.hidden = true; reader.hidden = false;
+    status.textContent = "載入中…"; doc.innerHTML = ""; toc.innerHTML = ""; reader.classList.remove("has-toc");
+    if (spy) spy.disconnect();
     try {
       const res = await fetch(name, { cache: "no-cache" });
       if (!res.ok) throw new Error(res.status);
       doc.innerHTML = marked.parse(await res.text());
       status.textContent = "";
+      const h1 = doc.querySelector("h1"); if (h1) document.title = h1.textContent + " · q-trade";
+      // tables scroll inside a rounded frame instead of widening the page
+      doc.querySelectorAll("table").forEach(t => { const w = document.createElement("div"); w.className = "tw"; t.replaceWith(w); w.appendChild(t); });
       // ```mermaid blocks -> diagrams
       const blocks = doc.querySelectorAll("pre code.language-mermaid");
       blocks.forEach(code => { const div = document.createElement("div"); div.className = "mermaid"; div.textContent = code.textContent; code.parentElement.replaceWith(div); });
       if (blocks.length) await mermaid.run({ nodes: doc.querySelectorAll(".mermaid") });
-      // links to the other doc stay inside the page
+      // links to the other documents stay inside the page
       doc.querySelectorAll('a[href$=".md"]').forEach(a => {
         const target = a.getAttribute("href").split("/").pop();
-        if (tabs.some(t => t.dataset.doc === target)) a.addEventListener("click", e => { e.preventDefault(); go(target); });
+        if (docs.includes(target)) a.addEventListener("click", e => { e.preventDefault(); go(target); });
       });
+      buildToc();
     } catch (e) { status.textContent = "載入失敗（" + e.message + "）"; }
   }
-  function go(name) { history.replaceState(null, "", "#" + name.replace(".md", "")); show(name); scrollTo(0, 0); }
-  tabs.forEach(t => t.addEventListener("click", () => go(t.dataset.doc)));
-  const start = tabs.find(t => location.hash && t.dataset.doc.startsWith(location.hash.slice(1)));
-  show(start ? start.dataset.doc : "GUIDE.md");
+
+  function buildToc() {
+    const heads = [...doc.querySelectorAll("h2, h3")];
+    if (heads.length < 4) return;
+    reader.classList.add("has-toc");
+    const links = new Map();
+    heads.forEach((h, i) => {
+      h.id = "s" + i;
+      const a = document.createElement("a");
+      a.textContent = h.textContent; a.className = h.tagName.toLowerCase(); a.href = "#";
+      a.addEventListener("click", e => { e.preventDefault(); h.scrollIntoView(); });
+      toc.appendChild(a); links.set(h, a);
+    });
+    spy = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return;
+      links.forEach(a => a.classList.remove("on")); links.get(e.target).classList.add("on");
+    }), { rootMargin: "-64px 0px -70% 0px" });
+    heads.forEach(h => spy.observe(h));
+  }
+
+  function go(key) {
+    history.replaceState(null, "", key === "home" ? location.pathname : "#" + key.replace(".md", ""));
+    key === "home" ? showHome() : showDoc(key);
+    scrollTo(0, 0);
+  }
+  tabs.forEach(t => t.addEventListener("click", () => go(t.dataset.doc || t.dataset.view)));
+  document.querySelectorAll("[data-go]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); go(a.dataset.go); }));
+  const start = docs.find(d => location.hash && d.replace(".md", "") === location.hash.slice(1));
+  start ? showDoc(start) : showHome();
 </script>
 </body>
 </html>
