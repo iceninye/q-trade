@@ -11,6 +11,7 @@
 
 | 路徑 | 作用 |
 |---|---|
+| `docs/OPPORTUNITIES.md` | 獲利機會清單：按證據強弱排序，附數字來源與下一步 |
 | `docs/GUIDE.md` | 完整指南：標的與經紀商選型、MT5 vs TradingView、架構與部署、風控、程式碼、驗證流程、常見陷阱 |
 | `qtrade/risk.py` | RiskGuard：USD 1 固定風險、日停損（最壞情況）、回撤停機、頻率限制、連虧冷卻、點差三重過濾、時段／換日／新聞、資料新鮮度、KILL 檔 |
 | `qtrade/sizing.py`, `qtrade/costs.py` | 按金額風險算手數（**絕不向上捨入到最小手數**）；成本佔 R、打和勝率 |
